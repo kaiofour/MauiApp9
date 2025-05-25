@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiApp9.AddTodoPage"
+             BackgroundColor="#EEEBDD">
+    <Grid RowDefinitions="Auto, *, Auto" RowSpacing="20">
+        <Grid Grid.Row="0"
+              BackgroundColor="#D8AA96"  
+              Padding="10,30,0,10">
+
+            <Label Text="Add Task"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="Black"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+        </Grid>
+        <!-- Form Content -->
+        <VerticalStackLayout Grid.Row="1" Spacing="20">
+
+            <!-- Title Entry -->
+            <Border BackgroundColor="White"
+                    Margin="0,8"
+                    StrokeShape="RoundRectangle 12"
+                    MaximumWidthRequest="360">
+                <Border.Shadow>
+                    <Shadow Brush="Black"
+                            Opacity="0.3"
+                            Offset="0,4"
+                            Radius="4"/>
+                </Border.Shadow>
+                <Entry x:Name="TitleEntry"
+                       Placeholder="Enter task title"
+                       BackgroundColor="White"
+                       MaximumWidthRequest="350"
+                       HeightRequest="50"
+                       TextColor="Black"
+                       PlaceholderColor="Black"/>
+            </Border>
+
+            <Border BackgroundColor="White"
+                    Margin="0,8"
+                    StrokeShape="RoundRectangle 12"
+                    MaximumWidthRequest="360">
+                <Border.Shadow>
+                    <Shadow Brush="Black"
+                            Opacity="0.3"
+                            Offset="0,4"
+                            Radius="4"/>
+                </Border.Shadow>
+                <!-- Description Field (use Editor instead of Entry) -->
+                <Editor x:Name="DescriptionEntry"
+                        Placeholder="Description"
+                        BackgroundColor="White"
+                        HeightRequest="150"
+                        TextColor="Black"
+                        AutoSize="TextChanges"
+                        PlaceholderColor="Black"/>
+            </Border>
+
+            <!-- Save Button -->
+            <Button Text="Add"
+                    BackgroundColor="#8C1A11"
+                    TextColor="Black"
+                    Clicked="OnSaveClicked"
+                    MaximumWidthRequest="360"/>
+
+        </VerticalStackLayout>
+
+        <!-- Bottom Navigation -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" 
+              BackgroundColor="#E6B9A2"
+              VerticalOptions="End"
+              Padding="0,8">
+            <ImageButton Source="list.png" 
+                         Grid.Column="0" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24" 
+                         BackgroundColor="Transparent" />
+
+            <ImageButton Source="check.png" 
+                         Grid.Column="1" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24"
+                         BackgroundColor="Transparent" />
+
+            <ImageButton Source="profile.png" 
+                         Grid.Column="2" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24"
+                         BackgroundColor="Transparent" />
+        </Grid>
+
+    </Grid>
+</ContentPage> 
+    

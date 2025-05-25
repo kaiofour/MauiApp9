@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="MauiApp9.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:MauiApp9"
+    Shell.FlyoutBehavior="Disabled"
+    Title="MauiApp9">
+
+    <ShellContent 
+        Route="SignInPage" 
+        ContentTemplate="{DataTemplate local:SignInPage}" />
+    
+    <ShellContent 
+        Route="SignUpPage" 
+        ContentTemplate="{DataTemplate local:SignUpPage}" />
+
+    <ShellContent Route="TodoPage" ContentTemplate="{DataTemplate local:TodoPage}" />
+    <ShellContent Route="AddTodoPage" ContentTemplate="{DataTemplate local:AddTodoPage}" />
+    <ShellContent Route="EditTodoPage" ContentTemplate="{DataTemplate local:EditTodoPage}" />
+    <ShellContent Route="CompletedTodoPage" ContentTemplate="{DataTemplate local:CompletedTodoPage}" />
+    <ShellContent Route="ProfilePage" ContentTemplate="{DataTemplate local:ProfilePage}" />
+
+</Shell>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiApp9.EditTodoPage"
+             BackgroundColor="#EEEBDD">
+    <Grid RowDefinitions="*, Auto" RowSpacing="20">
+
+        <!-- Form Content -->
+        <VerticalStackLayout Grid.Row="0" Spacing="20">
+
+            <!-- Title Entry -->
+            <Entry x:Name="TitleEntry"
+                   Placeholder="Title here"
+                   BackgroundColor="White"
+                   PlaceholderColor="Black"
+                   HeightRequest="50"
+                   Margin="0,25,0,0"
+                   WidthRequest="350"
+                   TextColor="Black" />
+
+            <!-- Description Field -->
+            <Editor x:Name="DescriptionEntry"
+                    Placeholder="Details"
+                    BackgroundColor="White"
+                    HeightRequest="150"
+                    WidthRequest="350"
+                    TextColor="Black"
+                    PlaceholderColor="Black"
+                    AutoSize="TextChanges" />
+
+            <!-- Buttons -->
+            <Button 
+                    Text="Update"
+                    BackgroundColor="#630000"  
+                    TextColor="Black"
+                    WidthRequest="350"
+                    Clicked="OnUpdateClicked" />
+
+                <Button
+                    Text="Complete"
+                    BackgroundColor="#863B37"  
+                    TextColor="Black"
+                    WidthRequest="350"
+                    Clicked="OnCompleteClicked" />
+
+                <Button 
+                    Text="Delete"
+                    BackgroundColor="#A8766F"  
+                    TextColor="Black"
+                    WidthRequest="350"
+                    Clicked="OnDeleteClicked" />
+
+        </VerticalStackLayout>
+
+        <!-- Bottom Navigation -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*" 
+              BackgroundColor="#E6B9A2"
+              VerticalOptions="End"
+              Padding="0,8">
+
+            <ImageButton Source="list.png" 
+                         Grid.Column="0" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24" 
+                         BackgroundColor="Transparent"
+                         Clicked="OnListClicked"/>
+
+            <ImageButton Source="check.png" 
+                         Grid.Column="1" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24"
+                         BackgroundColor="Transparent"
+                         Clicked="OnCompleteClicked"/>
+
+            <ImageButton Source="profile.png" 
+                         Grid.Column="2" 
+                         HorizontalOptions="Center"
+                         HeightRequest="24" 
+                         WidthRequest="24"
+                         BackgroundColor="Transparent"
+                         Clicked="OnProfileClicked"/>
+
+        </Grid>
+    </Grid>
+</ContentPage>
