@@ -23,9 +23,6 @@ public class TodoService
     public TodoService()
     {
         _httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-
-        //testcase for debugging
-        Console.WriteLine($"Using API base URL: {BaseUrl}");
     }
 
     // API Methods
@@ -157,40 +154,13 @@ public class TodoService
         }
     }
 
-    public async Task<(bool success, string message)> TestConnection()
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync("");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // Check if we got any response
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, $"API is reachable. Response: {content}");
-            }
-
-            return (false, $"API returned status: {response.StatusCode}. Response: {content}");
-        }
-        catch (HttpRequestException httpEx)
-        {
-            return (false, $"Network error: {httpEx.Message}");
-        }
-        catch (Exception ex)
-        {
-            return (false, $"Connection test failed: {ex.Message}");
-        }
-    }
-
-
-
     // Helper classes
     private class ApiResponse<T>
     {
         public int status { get; set; }
         public string message { get; set; }
         public T data { get; set; } = default; // Initialize with default value
-        public int count { get; set; }
+        public string count { get; set; }
     }
 
     private class UserInfo
@@ -200,5 +170,3 @@ public class TodoService
         public string timemodified { get; set; }
     }
 }
-
-
