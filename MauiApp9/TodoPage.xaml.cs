@@ -145,10 +145,12 @@ public partial class TodoPage : ContentPage
     {
         await Shell.Current.GoToAsync(nameof(ProfilePage));
     }
+
+
 }
 
 
-public class TodoItem : INotifyPropertyChanged
+public partial class TodoItem : INotifyPropertyChanged
 {
     private int _itemId;
     private string _title = string.Empty;

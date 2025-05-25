@@ -12,4 +12,6 @@ public partial class App : Application
         var window = new Window(new AppShell());
         return window;
     }
+
+
 }

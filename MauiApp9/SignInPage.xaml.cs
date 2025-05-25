@@ -1,88 +1,115 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
-using static MauiApp9.SignUpPage;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace MauiApp9;
 
 public partial class SignInPage : ContentPage
 {
+    private readonly HttpClient _httpClient = new HttpClient();
+    private const string BaseUrl = "https://todo-list.dcism.org/";
+
     public SignInPage()
+    {
+        InitializeComponent();
+        _httpClient.BaseAddress = new Uri(BaseUrl);
+    }
+
+    private async void SignInButton_Clicked(object sender, EventArgs e)
+    {
+        var email = EmailEntry.Text?.Trim();
+        var password = PasswordEntry.Text;
+
+        if (string.IsNullOrEmpty(email))
         {
-            InitializeComponent();
+            await DisplayAlert("Error", "Please enter email", "OK");
+            return;
         }
 
-        // Handle Sign In Button Click
-        private async void SignInButton_Clicked(object sender, EventArgs e)
+        if (string.IsNullOrEmpty(password))
         {
-            var email = EmailEntry.Text?.Trim();
-            var password = PasswordEntry.Text;
+            await DisplayAlert("Error", "Please enter password", "OK");
+            return;
+        }
 
-            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        try
+        {
+            // Test connection using getUser_action.php endpoint
+            var (connectionSuccess, connectionMessage) = await TestApiConnection();
+            if (!connectionSuccess)
             {
-                await DisplayAlert("Error", "Please enter both email and password.", "OK");
+                await DisplayAlert("Connection Error", connectionMessage, "OK");
                 return;
             }
 
-            string url = $"https://todo-list.dcism.org/signin_action.php?email={Uri.EscapeDataString(email)}&password={Uri.EscapeDataString(password)}";
+            // Proceed with sign in
+            string url = $"signin_action.php?email={Uri.EscapeDataString(email)}&password={Uri.EscapeDataString(password)}";
+            var response = await _httpClient.GetAsync(url);
+            var responseBody = await response.Content.ReadAsStringAsync();
 
-            using var httpClient = new HttpClient();
+            System.Diagnostics.Debug.WriteLine("API RESPONSE: " + responseBody);
 
-            try
+            var signInResponse = JsonSerializer.Deserialize<SignInResponse>(responseBody);
+
+            if (signInResponse?.status == 200 && signInResponse.data?.id > 0)
             {
-                var response = await httpClient.GetAsync(url);
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                var result = System.Text.Json.JsonSerializer.Deserialize<SignInResponse>(responseBody);
-
-                if (result != null && result.status == 200)
-                {
-                    await DisplayAlert("Success", result.message, "OK");
-
-                    // (Optional) Store user info if needed
-                    var user = result.data;
-                    if (user != null)
-                    {
-                        Console.WriteLine($"Welcome, {user.fname} {user.lname} (ID: {user.id})");
-                    }
-
-                    // Navigate to TodoPage
-                    await Shell.Current.GoToAsync("//TodoPage");
-                }
-                else
-                {
-                    await DisplayAlert("Error", result?.message ?? "Login failed.", "OK");
-                }
+                Preferences.Set("user_id", signInResponse.data.id.ToString());
+                await Shell.Current.GoToAsync("//TodoPage");
             }
-            catch (Exception ex)
+            else
             {
-                await DisplayAlert("Error", $"Something went wrong: {ex.Message}", "OK");
+                await DisplayAlert("Error", signInResponse?.message ?? "Login failed", "OK");
             }
         }
-
-        public class SignInResponse
+        catch (Exception ex)
         {
-            public int status { get; set; }
-            public string? message { get; set; }
-            public UserData? data { get; set; }
+            await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
         }
+    }
 
-        public class UserData
+    // Tests connection using getUser_action.php endpoint
+    private async Task<(bool success, string message)> TestApiConnection()
+    {
+        try
         {
-            public int id { get; set; }
-            public string? fname { get; set; }
-            public string? lname { get; set; }
-            public string? email { get; set; }
-            public string? timemodified { get; set; }
-        }
+            // Using a lightweight GET request to check connection
+            var response = await _httpClient.GetAsync("getUser_action.php?email=test@test.com");
 
-        // Navigate to the SignUpPage
-        private async void SignUpButton_Clicked(object sender, EventArgs e)
-        {
-            await Shell.Current.GoToAsync("//SignUpPage");
+            // Even if the user doesn't exist, we just want to check if the endpoint is reachable
+            return response.IsSuccessStatusCode
+                ? (true, "API is reachable")
+                : (false, $"API returned status: {response.StatusCode}");
         }
+        catch (HttpRequestException httpEx)
+        {
+            return (false, $"Network error: {httpEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Connection test failed: {ex.Message}");
+        }
+    }
+
+    private async void SignUpButton_Clicked(object sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("//SignUpPage");
+    }
+}
+
+public class SignInResponse
+{
+    public int status { get; set; }
+    public string? message { get; set; }
+    public UserData? data { get; set; }
+}
+
+public class UserData
+{
+    public int id { get; set; }
+    public string? fname { get; set; }
+    public string? lname { get; set; }
+    public string? email { get; set; }
+    public string? timemodified { get; set; }
 }
