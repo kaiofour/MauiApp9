@@ -160,7 +160,7 @@ public class TodoService
         public int status { get; set; }
         public string message { get; set; }
         public T data { get; set; } = default; // Initialize with default value
-        public string count { get; set; }
+        public int count { get; set; }
     }
 
     private class UserInfo
