@@ -14,7 +14,7 @@ using System.Text.Json;
 public class TodoService
 {
     private readonly HttpClient _httpClient;
-    private const string BaseUrl = "https://your-api-url.com/"; // Replace with actual API URL
+    private const string BaseUrl = "https://todo-list.dcism.org"; // Replace with actual API URL
 
     public static ObservableCollection<TodoItem> PendingTasks { get; } = new();
     public static ObservableCollection<TodoItem> CompletedTasks { get; } = new();
