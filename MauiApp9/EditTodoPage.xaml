@@ -37,14 +37,14 @@
                     WidthRequest="350"
                     Clicked="OnUpdateClicked" />
 
-                <Button
+            <Button
                     Text="Complete"
                     BackgroundColor="#863B37"  
                     TextColor="Black"
                     WidthRequest="350"
                     Clicked="OnCompleteClicked" />
 
-                <Button 
+            <Button 
                     Text="Delete"
                     BackgroundColor="#A8766F"  
                     TextColor="Black"

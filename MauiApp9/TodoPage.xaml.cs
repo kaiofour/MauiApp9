@@ -1,252 +1,186 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MauiApp9.Models;
+using MauiApp9.Services;
 using System.Collections.ObjectModel;
-using System.Windows.Input;
-using System.ComponentModel;
+using System.Text.Json;
 
-namespace MauiApp9;
-
-public partial class TodoPage : ContentPage
+namespace MauiApp9
 {
-    private readonly TodoService _todoService;
-
-    public ObservableCollection<TodoItem> Tasks { get; set; }
-
-    public TodoPage(TodoService todoService)
+    public partial class TodoPage : ContentPage, IRefreshablePage
     {
-        InitializeComponent();
-        _todoService = todoService;
-        Tasks = new ObservableCollection<TodoItem>();
-        BindingContext = this;
+        private readonly ApiService _apiService;
+        private int _userId => SessionService.Instance.UserId;
+        public ObservableCollection<TodoItem> Tasks { get; } = new ObservableCollection<TodoItem>();
 
-        LoadTasks();
-    }
-
-    private async void LoadTasks()
-    {
-        try
+        public TodoPage()
         {
-            IsBusy = true;
-            NoTasksLabel.Text = "Loading tasks...";
-            NoTasksLabel.IsVisible = true;
+            InitializeComponent();
+            _apiService = new ApiService();
+            BindingContext = this;
+        }
 
-            var userId = Preferences.Get("user_id", 0);
-            var (success, message, items) = await _todoService.GetTodoItems("active", userId);
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            await LoadTasks();
+            TodoListView.IsVisible = Tasks?.Count > 0; // Show only if there are items
+            NoTasksLabel.IsVisible = !TodoListView.IsVisible;
+        }
 
-            Tasks.Clear();
-            TodoService.PendingTasks.Clear();
+        public async Task ReloadTasksAsync()
+        {
+            await LoadTasks();
+        }
 
-            if (success)
+        private async Task LoadTasks()
+        {
+            try
             {
-                if (items?.Count > 0)
+                string jsonResponse = await _apiService.GetTasksAsync("active", _userId);
+                var result = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
+
+                if (result.GetProperty("status").GetInt32() == 200)
                 {
-                    foreach (var item in items)
+                    // Create a temporary list to verify uniqueness
+                    var uniqueTasks = new Dictionary<int, TodoItem>();
+                    var data = result.GetProperty("data");
+
+                    foreach (JsonProperty item in data.EnumerateObject())
                     {
-                        Tasks.Add(item);
-                        TodoService.PendingTasks.Add(item);
+                        var task = item.Value;
+                        var taskId = task.GetProperty("item_id").GetInt32();
+
+                        // Only add if not already in dictionary
+                        if (!uniqueTasks.ContainsKey(taskId))
+                        {
+                            uniqueTasks[taskId] = new TodoItem
+                            {
+                                item_id = taskId,
+                                item_name = task.GetProperty("item_name").GetString(),
+                                item_description = task.GetProperty("item_description").GetString(),
+                                status = "active",
+                                timemodified = DateTime.Now.ToString(),
+                                IsCompleted = false
+                            };
+                        }
                     }
-                    NoTasksLabel.IsVisible = false;
-                }
-                else
-                {
-                    NoTasksLabel.Text = "No tasks found";
-                    NoTasksLabel.IsVisible = true;
-                }
-            }
-            else
-            {
-                await DisplayAlert("Error", message, "OK");
-                NoTasksLabel.Text = "Error loading tasks";
-            }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
 
-    private void UpdateNoTasksMessage() => NoTasksLabel.IsVisible = Tasks.Count == 0;
-
-    private async void OnAddTaskClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync(nameof(AddTodoPage));
-    }
-
-    private async void OnDeleteTaskClicked(object sender, EventArgs e)
-    {
-        if (sender is VisualElement element && element.BindingContext is TodoItem taskToDelete)
-        {
-            var confirm = await DisplayAlert("Confirm", $"Delete {taskToDelete.Title}?", "Yes", "No");
-            if (confirm)
-            {
-                // Explicitly declare the tuple variables
-                (bool success, string message) = await _todoService.DeleteTodoItem(taskToDelete.item_id);
-
-                if (success)
-                {
-                    Tasks.Remove(taskToDelete);
-                    TodoService.PendingTasks.Remove(taskToDelete);
-                }
-                else
-                {
-                    await DisplayAlert("Error", message, "OK");
-                }
-            }
-        }
-    }
-
-    private async void OnCheckBoxChanged(object sender, CheckedChangedEventArgs e)
-    {
-        if (sender is CheckBox checkBox && checkBox.BindingContext is TodoItem checkedItem)
-        {
-            var newStatus = e.Value ? "inactive" : "active";
-            // Explicitly declare the tuple variables
-            (bool success, string message) = await _todoService.ChangeTodoStatus(checkedItem.item_id, newStatus);
-
-            if (success)
-            {
-                if (e.Value)
-                {
-                    MainThread.BeginInvokeOnMainThread(async () =>
+                    // Clear and update on main thread
+                    Device.BeginInvokeOnMainThread(() =>
                     {
-                        Tasks.Remove(checkedItem);
-                        TodoService.PendingTasks.Remove(checkedItem);
-                        TodoService.CompletedTasks.Add(checkedItem);
-                        await Shell.Current.GoToAsync(nameof(CompletedTodoPage));
+                        Tasks.Clear();
+                        foreach (var task in uniqueTasks.Values)
+                        {
+                            Tasks.Add(task);
+                        }
+
+                        TodoListView.IsVisible = Tasks.Count > 0;
+                        NoTasksLabel.IsVisible = !TodoListView.IsVisible;
                     });
                 }
             }
-            else
+            catch (Exception ex)
             {
-                checkBox.IsChecked = !e.Value;
-                await DisplayAlert("Error", message, "OK");
+                await DisplayAlert("Error", $"Failed to load tasks: {ex.Message}", "OK");
             }
         }
-    }
 
-    private async void OnTodoItemTapped(object sender, EventArgs e)
-    {
-        if (sender is VisualElement visualElement && visualElement.BindingContext is TodoItem tappedItem)
+        private async void OnTodoItemTapped(object sender, EventArgs e)
         {
-            TodoService.SelectedItem = tappedItem;
-            await Shell.Current.GoToAsync(nameof(EditTodoPage));
+            // Get the task from the ViewCell's BindingContext
+            if (sender is ViewCell viewCell && viewCell.BindingContext is TodoItem task)
+            {
+                // Clone the task to avoid reference issues
+                var taskCopy = new TodoItem
+                {
+                    item_id = task.item_id,
+                    item_name = task.item_name,
+                    item_description = task.item_description,
+                    status = task.status,
+                    user_id = task.user_id,
+                    timemodified = DateTime.Now.ToString(),
+                    IsCompleted = task.IsCompleted
+                };
+
+                await Navigation.PushAsync(new EditTodoPage(this, taskCopy));
+            }
         }
+
+        private async void OnCheckBoxChanged(object sender, CheckedChangedEventArgs e)
+        {
+            if (sender is CheckBox checkBox && checkBox.BindingContext is TodoItem task)
+            {
+                string newStatus = e.Value ? "inactive" : "active";
+                var response = await _apiService.ToggleTaskStatusAsync(task.item_id, newStatus);
+                var result = JsonSerializer.Deserialize<JsonElement>(response);
+
+                if (result.GetProperty("status").GetInt32() != 200)
+                {
+                    await DisplayAlert("Error", "Failed to update task status.", "OK");
+                    checkBox.IsChecked = !e.Value;
+                }
+                else
+                {
+                    await ReloadTasksAsync();
+                }
+            }
+        }
+
+        private async void OnDeleteTaskClicked(object sender, TappedEventArgs e)
+        {
+            try
+            {
+                if (sender is VisualElement image && image.BindingContext is TodoItem task)
+                {
+                    bool confirm = await DisplayAlert("Delete", $"Delete task '{task.item_name}'?", "Yes", "No");
+                    if (confirm)
+                    {
+                        var response = await _apiService.DeleteTaskAsync(task.item_id);
+                        var result = JsonSerializer.Deserialize<JsonElement>(response);
+
+                        if (result.GetProperty("status").GetInt32() == 200)
+                        {
+                            Device.BeginInvokeOnMainThread(() =>
+                            {
+                                var taskToRemove = Tasks.FirstOrDefault(t => t.item_id == task.item_id);
+                                if (taskToRemove != null)
+                                {
+                                    Tasks.Remove(taskToRemove);
+                                    // Update UI states
+                                    TodoListView.IsVisible = Tasks.Count > 0;
+                                    NoTasksLabel.IsVisible = !TodoListView.IsVisible;
+                                }
+                            });
+                        }
+                        else
+                        {
+                            await DisplayAlert("Error", "Failed to delete task.", "OK");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"Delete failed: {ex.Message}", "OK");
+            }
+        }
+
+        private async void OnAddTaskClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new AddTodoPage(this));
+        }
+
+        private async void OnCheckClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync("//CompletedTodoPage");
+        }
+
+        private async void OnProfileClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync("//ProfilePage");
+        }
+
+
     }
-
-    private async void OnCheckClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync(nameof(CompletedTodoPage));
-    }
-
-    private async void OnProfileClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync(nameof(ProfilePage));
-    }
-
-
 }
 
 
-public partial class TodoItem : INotifyPropertyChanged
-{
-    private int _itemId;
-    private string _title = string.Empty;
-    private string _description = string.Empty;
-    private bool _isCompleted;
-    private int _userId;
-    private string _timeModified;
-
-    public int item_id
-    {
-        get => _itemId;
-        set
-        {
-            if (_itemId != value)
-            {
-                _itemId = value;
-                OnPropertyChanged(nameof(item_id));
-            }
-        }
-    }
-
-    public string Title
-    {
-        get => _title;
-        set
-        {
-            if (_title != value)
-            {
-                _title = value;
-                OnPropertyChanged(nameof(Title));
-            }
-        }
-    }
-
-    public string Description
-    {
-        get => _description;
-        set
-        {
-            if (_description != value)
-            {
-                _description = value;
-                OnPropertyChanged(nameof(Description));
-            }
-        }
-    }
-
-    public bool IsCompleted
-    {
-        get => _isCompleted;
-        set
-        {
-            if (_isCompleted != value)
-            {
-                _isCompleted = value;
-                OnPropertyChanged(nameof(IsCompleted));
-                OnPropertyChanged(nameof(Status)); // Update status when completion changes
-            }
-        }
-    }
-
-    // This property maps to the API's "status" field
-    public string Status
-    {
-        get => IsCompleted ? "inactive" : "active";
-        set => IsCompleted = value == "inactive";
-    }
-
-    public int user_id
-    {
-        get => _userId;
-        set
-        {
-            if (_userId != value)
-            {
-                _userId = value;
-                OnPropertyChanged(nameof(user_id));
-            }
-        }
-    }
-
-    public string timemodified
-    {
-        get => _timeModified;
-        set
-        {
-            if (_timeModified != value)
-            {
-                _timeModified = value;
-                OnPropertyChanged(nameof(timemodified));
-            }
-        }
-    }
-
-    public event PropertyChangedEventHandler PropertyChanged;
-
-    protected void OnPropertyChanged(string propertyName) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-}

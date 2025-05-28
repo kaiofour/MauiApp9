@@ -1,54 +1,62 @@
+using MauiApp9.Services;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using MauiApp9.Models;
+using MauiApp9.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Input;
 
-namespace MauiApp9;
 
-public partial class AddTodoPage : ContentPage
+namespace MauiApp9
 {
-    private readonly TodoService _todoService;
-
-    public ICommand NavigateBackCommand { get; private set; }
-
-    public AddTodoPage(TodoService todoService)
+    public partial class AddTodoPage : ContentPage
     {
-        InitializeComponent();
-        _todoService = todoService;
-        BindingContext = this;
-    }
+        private readonly ApiService _apiService;
+        private readonly IRefreshablePage _todoPage;
 
-    private async void OnSaveClicked(object sender, EventArgs e)
-    {
-        string title = TitleEntry.Text;
-        string description = DescriptionEntry.Text;
-
-        if (!string.IsNullOrWhiteSpace(title))
+        public AddTodoPage(IRefreshablePage todoPage)
         {
-            var userId = Preferences.Get("user_id", 0);
-            // Explicitly declare the tuple variables
-            (bool success, string message, TodoItem newItem) = await _todoService.AddTodoItem(
+            InitializeComponent();
+            _apiService = new ApiService();
+            _todoPage = todoPage;
+        }
+
+        private async void OnSaveClicked(object sender, EventArgs e)
+        {
+            string title = TitleEntry.Text;
+            string description = DescriptionEntry.Text ?? string.Empty; // Make description optional
+            string status = "active";
+            string timemodified = DateTime.Now.ToString();
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                await DisplayAlert("Validation", "Please enter at least a task title.", "OK");
+                return;
+            }
+
+            string response = await _apiService.AddTaskAsync(
                 title,
                 description,
-                userId);
+                SessionService.Instance.UserId,
+                status
+            );
 
-            if (success && newItem != null)
+
+            var result = JsonSerializer.Deserialize<JsonElement>(response);
+
+            if (result.GetProperty("status").GetInt32() == 200)
             {
-                TodoService.PendingTasks.Add(newItem);
-                TitleEntry.Text = string.Empty;
-                DescriptionEntry.Text = string.Empty;
-                await Shell.Current.GoToAsync("//TodoPage");
+                await DisplayAlert("Success", "Task added successfully.", "OK");
+                await _todoPage.ReloadTasksAsync();
+                await Navigation.PopAsync();
             }
             else
             {
-                await DisplayAlert("Error", message ?? "Failed to add task", "OK");
+                await DisplayAlert("Error", "Failed to add task. PLEASE Add Description", "OK");
             }
-        }
-        else
-        {
-            await DisplayAlert("Error", "Title cannot be empty", "OK");
         }
     }
 }

@@ -1,61 +1,103 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Input;
 
-namespace MauiApp9;
+using System.Text.Json;
+using MauiApp9.Models;
+using MauiApp9.Services;
 
-public partial class EditTodoPage : ContentPage
+namespace MauiApp9
 {
-    public EditTodoPage()
+    public partial class EditTodoPage : ContentPage
     {
-        InitializeComponent();
-        BindingContext = this;
-    }
+        private readonly ApiService _apiService;
+        private readonly TodoItem _task;
+        private readonly IRefreshablePage _sourcePage;
 
-    // Update button handler
-    private async void OnUpdateClicked(object sender, EventArgs e)
-    {
-        // TODO: Implement updating logic
-        // e.g. update the TitleEntry, DescriptionEntry in your data model
+        public EditTodoPage(IRefreshablePage sourcePage, TodoItem task)
+        {
+            InitializeComponent();
+            _apiService = new ApiService();
+            _task = task;
+            _sourcePage = sourcePage;
 
-        // Navigate back to TodoPage
-        await Shell.Current.GoToAsync("//TodoPage");
-    }
+            TitleEntry.Text = _task.item_name;
+            DescriptionEntry.Text = _task.item_description;
+        }
 
-    // Complete button handler
-    private async void OnCompleteClicked(object sender, EventArgs e)
-    {
-        // TODO: Mark the current item as completed in your data
-        // For example:
-        //   TodoService.PendingTasks.Remove(selectedItem);
-        //   TodoService.CompletedTasks.Add(selectedItem);
+        private async void OnUpdateClicked(object sender, EventArgs e)
+        {
+            _task.item_name = TitleEntry.Text;
+            _task.item_description = DescriptionEntry.Text;
+            _task.timemodified = DateTime.Now.ToString();
+
+            if (string.IsNullOrWhiteSpace(_task.item_name))
+            {
+                await DisplayAlert("Warning!", "Title must not be empty.", "OK");
+                return;
+            }
+
+            var response = await _apiService.EditTaskAsync(
+                _task.item_id,
+                _task.item_name,
+                _task.item_description
+            );
 
 
+            var result = JsonSerializer.Deserialize<JsonElement>(response);
 
-        // Navigate to CompletedTodoPage
-        await Shell.Current.GoToAsync("//CompletedTodoPage");
-    }
+            if (result.GetProperty("status").GetInt32() == 200)
+            {
+                await _sourcePage.ReloadTasksAsync();
+                await Navigation.PopAsync();
+            }
+            else
+            {
+                await DisplayAlert("Error", "Failed to update task.", "OK");
+            }
+        }
 
-    // Delete button handler
-    private async void OnDeleteClicked(object sender, EventArgs e)
-    {
-        // TODO: Remove the current item from your data
-        // e.g. TodoService.PendingTasks.Remove(selectedItem);
+        private async void OnCompleteClicked(object sender, EventArgs e)
+        {
+            string newStatus = _task.status == "active" ? "inactive" : "active";
+            var response = await _apiService.ToggleTaskStatusAsync(_task.item_id, newStatus);
+            var result = JsonSerializer.Deserialize<JsonElement>(response);
 
-        // Navigate back to TodoPage or show some confirmation
-        await Shell.Current.GoToAsync("//TodoPage");
-    }
+            if (result.GetProperty("status").GetInt32() == 200)
+            {
+                await _sourcePage.ReloadTasksAsync();
+                await Navigation.PopAsync();
+            }
+            else
+            {
+                await DisplayAlert("Error", "Failed to update task status.", "OK");
+            }
+        }
 
-    private async void OnListClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//TodoPage");
-    }
+        private async void OnDeleteClicked(object sender, EventArgs e)
+        {
+            bool confirm = await DisplayAlert("Delete", $"Delete task '{_task.item_name}'?", "Yes", "No");
+            if (!confirm) return;
 
-    private async void OnProfileClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//ProfilePage");
+            var response = await _apiService.DeleteTaskAsync(_task.item_id);
+            var result = JsonSerializer.Deserialize<JsonElement>(response);
+
+            if (result.GetProperty("status").GetInt32() == 200)
+            {
+                await _sourcePage.ReloadTasksAsync();
+                await Navigation.PopAsync();
+            }
+            else
+            {
+                await DisplayAlert("Error", "Failed to delete task.", "OK");
+            }
+        }
+
+        private async void OnListClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync("//TodoPage");
+        }
+
+        private async void OnProfileClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync("//ProfilePage");
+        }
     }
 }

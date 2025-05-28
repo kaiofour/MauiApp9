@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:MauiApp9"
+             xmlns:models="clr-namespace:MauiApp9.Models"
              x:Class="MauiApp9.TodoPage"
              x:DataType="local:TodoPage"
              BackgroundColor="#EEEBDD">
@@ -30,15 +30,20 @@
             <ListView x:Name="TodoListView"
                       ItemsSource="{Binding Tasks}"
                       HasUnevenRows="True"
-                      SeparatorVisibility="None">
+                      SelectionMode="None"
+                      SeparatorVisibility="None"
+                      BackgroundColor="Transparent"
+                      CachingStrategy="RecycleElement">
 
                 <ListView.ItemTemplate>
                     <!-- Each item is a TodoItem, so let the compiler know -->
-                    <DataTemplate x:DataType="local:TodoItem">
+                    <DataTemplate x:DataType="models:TodoItem">
                         <ViewCell>
                             <Border BackgroundColor="White"
                                     Margin="0,8"
-                                    StrokeShape="RoundRectangle 12">
+                                    StrokeShape="RoundRectangle 12"
+                                    Stroke="LightGray"
+                                    HeightRequest="60">
 
                                 <Border.Shadow>
                                     <Shadow Brush="Black"
@@ -49,16 +54,17 @@
 
                                 <!-- Entire Border tap -->
                                 <Border.GestureRecognizers>
-                                    <TapGestureRecognizer Tapped="OnTodoItemTapped" />
+                                    <TapGestureRecognizer Tapped="OnTodoItemTapped" 
+                                                          CommandParameter="{Binding .}"/>
                                 </Border.GestureRecognizers>
 
                                 <Grid ColumnDefinitions="Auto, *, Auto" Padding="10,12">
                                     <!-- CheckBox to mark completion -->
-                                    <CheckBox IsChecked="{Binding IsCompleted}" 
-                                              Grid.Column="0"
-                                              Color="Black"
-                                              VerticalOptions="Center"
-                                              CheckedChanged="OnCheckBoxChanged"/>
+                                    <CheckBox IsChecked="{Binding IsCompleted, Mode=OneWay}"
+                                            Grid.Column="0"
+                                            Color="Black"
+                                            VerticalOptions="Center"
+                                            CheckedChanged="OnCheckBoxChanged"/>   
                                     <!-- Task Title -->
                                     <Label Text="{Binding Title}"
                                            Grid.Column="1"

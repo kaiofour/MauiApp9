@@ -1,115 +1,69 @@
-using System;
-using System.Net.Http;
-using Microsoft.Maui.Controls;
+using MauiApp9.Services;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace MauiApp9;
-
-public partial class SignInPage : ContentPage
+namespace MauiApp9
 {
-    private readonly HttpClient _httpClient = new HttpClient();
-    private const string BaseUrl = "https://todo-list.dcism.org/";
-
-    public SignInPage()
+    public partial class SignInPage : ContentPage
     {
-        InitializeComponent();
-        _httpClient.BaseAddress = new Uri(BaseUrl);
-    }
+        private readonly ApiService _apiService;
 
-    private async void SignInButton_Clicked(object sender, EventArgs e)
-    {
-        var email = EmailEntry.Text?.Trim();
-        var password = PasswordEntry.Text;
-
-        if (string.IsNullOrEmpty(email))
+        public SignInPage()
         {
-            await DisplayAlert("Error", "Please enter email", "OK");
-            return;
+            InitializeComponent();
+            _apiService = new ApiService();
         }
 
-        if (string.IsNullOrEmpty(password))
+        private async void SignInButton_Clicked(object sender, EventArgs e)
         {
-            await DisplayAlert("Error", "Please enter password", "OK");
-            return;
-        }
+            string email = EmailEntry.Text;
+            string password = PasswordEntry.Text;
 
-        try
-        {
-            // Test connection using getUser_action.php endpoint
-            var (connectionSuccess, connectionMessage) = await TestApiConnection();
-            if (!connectionSuccess)
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
-                await DisplayAlert("Connection Error", connectionMessage, "OK");
+                await DisplayAlert("Error", "Please enter both email and password.", "OK");
                 return;
             }
 
-            // Proceed with sign in
-            string url = $"signin_action.php?email={Uri.EscapeDataString(email)}&password={Uri.EscapeDataString(password)}";
-            var response = await _httpClient.GetAsync(url);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            string jsonResponse = await _apiService.SignInAsync(email, password);
 
-            System.Diagnostics.Debug.WriteLine("API RESPONSE: " + responseBody);
-
-            var signInResponse = JsonSerializer.Deserialize<SignInResponse>(responseBody);
-
-            if (signInResponse?.status == 200 && signInResponse.data?.id > 0)
+            try
             {
-                Preferences.Set("user_id", signInResponse.data.id.ToString());
-                await Shell.Current.GoToAsync("//TodoPage");
+                var result = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
+                int status = result.GetProperty("status").GetInt32();
+
+                if (status == 200)
+                {
+                    var userData = result.GetProperty("data");
+                    int userId = userData.GetProperty("id").GetInt32();
+                    string fname = userData.GetProperty("fname").GetString();
+                    string lname = userData.GetProperty("lname").GetString();
+
+                    SessionService.Instance.UserId = userId;
+                    SessionService.Instance.FName = fname;
+                    SessionService.Instance.LName = lname;
+                    SessionService.Instance.Email = userData.GetProperty("email").GetString();
+
+                    Application.Current.MainPage = new AppShell();
+
+                    await DisplayAlert("Success", "Credentials are valid.", "OK"); //new
+
+                    await Shell.Current.GoToAsync("//TodoPage");
+                }
+                else
+                {
+                    string message = result.GetProperty("message").GetString();
+                    await DisplayAlert("Login Failed", message, "OK");
+                }
             }
-            else
+            catch
             {
-                await DisplayAlert("Error", signInResponse?.message ?? "Login failed", "OK");
+                await DisplayAlert("Error", "Invalid server response.", "OK");
             }
         }
-        catch (Exception ex)
+
+        private async void SignUpButton_Clicked(object sender, EventArgs e)
         {
-            await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+            await Navigation.PushAsync(new SignUpPage());
         }
     }
-
-    // Tests connection using getUser_action.php endpoint
-    private async Task<(bool success, string message)> TestApiConnection()
-    {
-        try
-        {
-            // Using a lightweight GET request to check connection
-            var response = await _httpClient.GetAsync("getUser_action.php?email=test@test.com");
-
-            // Even if the user doesn't exist, we just want to check if the endpoint is reachable
-            return response.IsSuccessStatusCode
-                ? (true, "API is reachable")
-                : (false, $"API returned status: {response.StatusCode}");
-        }
-        catch (HttpRequestException httpEx)
-        {
-            return (false, $"Network error: {httpEx.Message}");
-        }
-        catch (Exception ex)
-        {
-            return (false, $"Connection test failed: {ex.Message}");
-        }
-    }
-
-    private async void SignUpButton_Clicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//SignUpPage");
-    }
-}
-
-public class SignInResponse
-{
-    public int status { get; set; }
-    public string? message { get; set; }
-    public UserData? data { get; set; }
-}
-
-public class UserData
-{
-    public int id { get; set; }
-    public string? fname { get; set; }
-    public string? lname { get; set; }
-    public string? email { get; set; }
-    public string? timemodified { get; set; }
 }

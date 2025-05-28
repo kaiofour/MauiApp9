@@ -1,38 +1,29 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace MauiApp9;
-
-public static class MauiProgram
+namespace MauiApp9
 {
-    public static MauiApp CreateMauiApp()
+    public static class MauiProgram
     {
-        var builder = MauiApp.CreateBuilder();
-        builder
-            .UseMauiApp<App>()
-            .ConfigureFonts(fonts =>
-            {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
-            });
-
-        builder.Services.AddSingleton<HttpClient>();
-
-        // Register services
-        builder.Services.AddSingleton<TodoService>();
-
-        // Register pages
-        builder.Services.AddTransient<SignInPage>();
-        builder.Services.AddTransient<SignUpPage>();
-        builder.Services.AddTransient<TodoPage>();
-        builder.Services.AddTransient<AddTodoPage>();
-        builder.Services.AddTransient<EditTodoPage>();
-        builder.Services.AddTransient<CompletedTodoPage>();
-        builder.Services.AddTransient<ProfilePage>();
+        public static MauiApp CreateMauiApp()
+        {
+            var builder = MauiApp.CreateBuilder();
+            builder
+                .UseMauiApp<App>()
+                .ConfigureFonts(fonts =>
+                {
+                    fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                    fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                })
+                .ConfigureMauiHandlers(handlers =>
+                {
+                    // Add any custom handlers here
+                });
 
 #if DEBUG
-        builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
-        return builder.Build();
+            return builder.Build();
+        }
     }
 }

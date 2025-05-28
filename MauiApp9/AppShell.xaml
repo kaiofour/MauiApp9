@@ -10,7 +10,7 @@
     <ShellContent 
         Route="SignInPage" 
         ContentTemplate="{DataTemplate local:SignInPage}" />
-    
+
     <ShellContent 
         Route="SignUpPage" 
         ContentTemplate="{DataTemplate local:SignUpPage}" />
